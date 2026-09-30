@@ -19,6 +19,8 @@ state = {
     "position": 1,
     "multiplier": 1,
     "running": False,
+    "paused": False,
+    "history": [],
 }
 
 sequence_task = None
@@ -40,6 +42,8 @@ def load_state():
         with open(STATE_FILE, "r") as file:
             state = json.load(file)
 
+        state.setdefault("paused", False)
+        state.setdefault("history", [])
         print("📂 State loaded:", state)
 
     except FileNotFoundError:
@@ -66,6 +70,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     state["chat_id"] = update.effective_chat.id
     state["running"] = True
+    state["paused"] = False
     save_state()
 
     await update.message.reply_text(
@@ -80,11 +85,51 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
         "📊 NUMBER LOOP BOT\n\n"
-        "▶️ /start - Start sequence\n"
+        "▶️ /start - Start or resume sequence\n"
+        "⏸️ /pause - Pause sequence\n"
+        "▶️ /resume - Resume sequence\n"
         "⏹️ /stop - Stop sequence\n"
         "📊 /status - View progress\n"
+        "🎯 /set <1-100> - Set position\n"
+        "⚙️ /settings - View bot settings\n"
+        "🏆 /history - View completed blocks\n"
         "🔄 /reset - Reset to ×1\n"
         "❓ /help - Show commands"
+    )
+
+
+async def pause(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if not state["running"]:
+        await update.message.reply_text("⏸️ Sequence is already stopped.")
+        return
+
+    state["paused"] = True
+    save_state()
+
+    await update.message.reply_text(
+        "⏸️ Sequence paused!\n\n"
+        f"📍 Position: {state['position']}/100\n"
+        f"✖️ Multiplier: ×{state['multiplier']}\n\n"
+        "Use /resume to continue."
+    )
+
+
+async def resume(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    global sequence_task
+
+    state["chat_id"] = update.effective_chat.id
+    state["running"] = True
+    state["paused"] = False
+    save_state()
+
+    if sequence_task is None or sequence_task.done():
+        sequence_task = asyncio.create_task(
+            number_loop(context.application)
+        )
+
+    await update.message.reply_text(
+        "▶️ Sequence resumed!\n\n"
+        f"➡️ Next number: {state['position'] * state['multiplier']}"
     )
 
 
@@ -92,13 +137,56 @@ async def stop(update: Update, context: ContextTypes.DEFAULT_TYPE):
     global sequence_task
 
     state["running"] = False
+    state["paused"] = False
     save_state()
 
     if sequence_task is not None and not sequence_task.done():
         sequence_task.cancel()
-        sequence_task = None
+        try:
+            await sequence_task
+        except asyncio.CancelledError:
+            pass
 
-    await update.message.reply_text("⏸️ Sequence stopped.")
+    sequence_task = None
+
+    await update.message.reply_text("⏹️ Sequence stopped.")
+
+
+async def set_position(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if not context.args:
+        await update.message.reply_text(
+            "🎯 Usage: /set <position>\n\n"
+            "Example: /set 50"
+        )
+        return
+
+    try:
+        position = int(context.args[0])
+    except ValueError:
+        await update.message.reply_text(
+            "❌ Position must be a number from 1 to 100."
+        )
+        return
+
+    if not 1 <= position <= 100:
+        await update.message.reply_text(
+            "❌ Position must be between 1 and 100."
+        )
+        return
+
+    state["chat_id"] = update.effective_chat.id
+    state["position"] = position
+    state["running"] = False
+    state["paused"] = False
+    save_state()
+
+    await update.message.reply_text(
+        "🎯 Position updated!\n\n"
+        f"📍 Position: {position}/100\n"
+        f"✖️ Multiplier: ×{state['multiplier']}\n"
+        f"➡️ Next number: {position * state['multiplier']}\n\n"
+        "Use /start to begin."
+    )
 
 
 async def status(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -109,18 +197,63 @@ async def status(update: Update, context: ContextTypes.DEFAULT_TYPE):
     block_end = 100 * multiplier
     remaining = 100 - position
 
-    status_text = "🟢 Running" if state["running"] else "🔴 Stopped"
+    status_text = (
+        "⏸️ Paused" if state.get("paused", False)
+        else "🟢 Running" if state["running"]
+        else "🔴 Stopped"
+    )
 
     await update.message.reply_text(
-        "📊 NUMBER BOT\n\n"
+        "📊 NUMBER LOOP BOT\n\n"
         f"{status_text}\n\n"
         f"🔢 Current: {current}\n"
         f"✖️ Multiplier: ×{multiplier}\n"
         f"📦 Block: {position}/100\n"
+        f"📈 Progress: {position}%\n"
         f"🎯 Block end: {block_end}\n"
         f"⏳ Remaining: {remaining}\n"
-        f"➡️ Next: {(position + 1) * multiplier}"
+        f"➡️ Next: {current}\n\n"
+        "⏱️ Speed: 1 number / 2 seconds"
     )
+
+
+async def settings(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    status_text = (
+        "⏸️ Paused" if state.get("paused", False)
+        else "🟢 Running" if state["running"]
+        else "🔴 Stopped"
+    )
+
+    await update.message.reply_text(
+        "⚙️ BOT SETTINGS\n\n"
+        f"📌 Status: {status_text}\n"
+        f"✖️ Multiplier: ×{state['multiplier']}\n"
+        "📦 Block size: 100\n"
+        "⏱️ Interval: 2 seconds\n"
+        f"📍 Position: {state['position']}/100\n"
+        f"📈 Progress: {state['position']}%\n"
+        f"🏆 Completed blocks: {len(state.get('history', []))}"
+    )
+
+
+async def history(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    completed = state.get("history", [])
+
+    if not completed:
+        await update.message.reply_text(
+            "🏆 BLOCK HISTORY\n\nNo blocks completed yet."
+        )
+        return
+
+    lines = ["🏆 BLOCK HISTORY", ""]
+
+    for item in completed[-10:]:
+        lines.append(
+            f"×{item['multiplier']} → {item['value']} ✅"
+        )
+
+    await update.message.reply_text("\n".join(lines))
+
 
 async def reset(update: Update, context: ContextTypes.DEFAULT_TYPE):
     global sequence_task
@@ -149,7 +282,7 @@ async def reset(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def number_loop(application):
     while True:
-        if not state["running"] or not state["chat_id"]:
+        if not state["running"] or state.get("paused", False) or not state["chat_id"]:
             await asyncio.sleep(1)
             continue
 
@@ -165,11 +298,19 @@ async def number_loop(application):
             )
 
             state["position"] += 1
+            save_state()
 
             if state["position"] > 100:
                 completed_multiplier = state["multiplier"]
                 completed_value = completed_multiplier * 100
                 next_multiplier = completed_multiplier + 1
+
+                state.setdefault("history", []).append({
+                    "multiplier": completed_multiplier,
+                    "value": completed_value,
+                })
+
+                state["history"] = state["history"][-50:]
 
                 await application.bot.send_message(
                     chat_id=state["chat_id"],
@@ -177,7 +318,9 @@ async def number_loop(application):
                         "🎉 BLOCK COMPLETED!\n\n"
                         f"✖ Multiplier: ×{completed_multiplier}\n"
                         f"🎯 Reached: {completed_value}\n\n"
-                        f"🚀 Next block: ×{next_multiplier}"
+                        "📈 Progress: 100%\\n\\n"
+                        f"🚀 Next block: ×{next_multiplier}\\n"
+                        f"➡️ Next number: {next_multiplier}"
                     )
                 )
 
@@ -205,7 +348,7 @@ async def post_init(application):
     load_state()
 
     # Automatically resume the sequence after a restart
-    if state["running"] and state["chat_id"]:
+    if state["running"] and state["chat_id"] and not state.get("paused", False):
         print("🔄 Auto-resuming number sequence...")
         sequence_task = asyncio.create_task(
             number_loop(application)
@@ -233,11 +376,31 @@ def main():
     )
 
     application.add_handler(
+        CommandHandler("pause", pause)
+    )
+
+    application.add_handler(
+        CommandHandler("resume", resume)
+    )
+
+    application.add_handler(
         CommandHandler("stop", stop)
     )
 
     application.add_handler(
+        CommandHandler("set", set_position)
+    )
+
+    application.add_handler(
         CommandHandler("status", status)
+    )
+
+    application.add_handler(
+        CommandHandler("settings", settings)
+    )
+
+    application.add_handler(
+        CommandHandler("history", history)
     )
 
     application.add_handler(
