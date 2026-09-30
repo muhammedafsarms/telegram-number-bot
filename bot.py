@@ -121,6 +121,20 @@ async def number_loop(application):
             state["position"] += 1
 
             if state["position"] > 100:
+                completed_multiplier = state["multiplier"]
+                completed_value = completed_multiplier * 100
+                next_multiplier = completed_multiplier + 1
+
+                await application.bot.send_message(
+                    chat_id=state["chat_id"],
+                    text=(
+                        "🎉 BLOCK COMPLETED!\n\n"
+                        f"✖️ Multiplier: ×{completed_multiplier}\n"
+                        f"🎯 Reached: {completed_value}\n\n"
+                        f"🚀 Next block: ×{next_multiplier}"
+                    )
+                )
+
                 state["position"] = 1
                 state["multiplier"] += 1
 
