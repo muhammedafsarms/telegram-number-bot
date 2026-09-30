@@ -12,7 +12,7 @@ from telegram.ext import (
     ContextTypes,
 )
 
-STATE_FILE = Path("state.json")
+STATE_FILE = Path("/data/state.json") if Path("/data").is_dir() else Path("state.json")
 
 state = {
     "chat_id": None,
@@ -25,20 +25,32 @@ sequence_task = None
 
 
 def save_state():
-    STATE_FILE.write_text(json.dumps(state, indent=2))
+    temp_file = STATE_FILE.with_name(STATE_FILE.name + ".tmp")
+
+    with open(temp_file, "w") as file:
+        json.dump(state, file, indent=2)
+
+    os.replace(temp_file, STATE_FILE)
 
 
 def load_state():
     global state
 
-    if STATE_FILE.exists():
-        try:
-            saved = json.loads(STATE_FILE.read_text())
-            state.update(saved)
-        except Exception:
-            pass
+    try:
+        with open(STATE_FILE, "r") as file:
+            state = json.load(file)
 
-    # Preserve the saved running state for automatic resume
+        print("📂 State loaded:", state)
+
+    except FileNotFoundError:
+        if STATE_FILE != Path("state.json") and Path("state.json").exists():
+            with open("state.json", "r") as file:
+                state = json.load(file)
+
+            save_state()
+            print("📂 Existing state migrated to persistent storage:", state)
+        else:
+            print("📂 No saved state found. Starting fresh.")
 
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
