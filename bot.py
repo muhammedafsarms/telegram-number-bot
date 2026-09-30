@@ -83,7 +83,6 @@ async def status(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"📦 Block: {position}/100\n"
         f"🎯 Block end: {block_end}\n"
         f"➡️ Next: {next_number}\n\n"
-        "⚡ Speed: ~1.05s"
     )
 
 
