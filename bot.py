@@ -66,6 +66,17 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         number_loop(context.application)
     )
 
+async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.message.reply_text(
+        "📊 NUMBER LOOP BOT\\n\\n"
+        "▶️ /start - Start sequence\\n"
+        "⏹️ /stop - Stop sequence\\n"
+        "📊 /status - View progress\\n"
+        "🔄 /reset - Reset to ×1\\n"
+        "❓ /help - Show commands"
+    )
+
+
 async def stop(update: Update, context: ContextTypes.DEFAULT_TYPE):
     state["running"] = False
     save_state()
@@ -183,6 +194,10 @@ def main():
 
     application.add_handler(
         CommandHandler("reset", reset)
+    )
+
+    application.add_handler(
+        CommandHandler("help", help_command)
     )
 
     application.run_polling()
