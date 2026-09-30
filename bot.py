@@ -68,15 +68,22 @@ async def stop(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def status(update: Update, context: ContextTypes.DEFAULT_TYPE):
     position = state["position"]
     multiplier = state["multiplier"]
-    current = position * multiplier
 
-    status_text = "▶️ Running" if state["running"] else "⏸️ Stopped"
+    current = position * multiplier
+    block_end = 100 * multiplier
+    next_number = (position + 1) * multiplier
+
+    status_text = "🟢 Running" if state["running"] else "🔴 Stopped"
 
     await update.message.reply_text(
-        f"{status_text}\n\n"
-        f"Multiplier: ×{multiplier}\n"
-        f"Position: {position}/100\n"
-        f"Current value: {current}"
+        "📊 NUMBER BOT\n\n"
+        f"{status_text}\n"
+        f"🔢 Current: {current}\n"
+        f"✖️ Multiplier: ×{multiplier}\n"
+        f"📦 Block: {position}/100\n"
+        f"🎯 Block end: {block_end}\n"
+        f"➡️ Next: {next_number}\n\n"
+        "⚡ Speed: ~1.05s"
     )
 
 
