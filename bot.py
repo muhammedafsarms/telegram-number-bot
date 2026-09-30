@@ -1,6 +1,7 @@
 import asyncio
 import json
 import os
+import fcntl
 from pathlib import Path
 
 from telegram import Update
@@ -199,6 +200,14 @@ async def post_init(application):
         )
 
 def main():
+    # Prevent multiple bot processes from running simultaneously.
+    lock_file = open("bot.lock", "w")
+    try:
+        fcntl.flock(lock_file, fcntl.LOCK_EX | fcntl.LOCK_NB)
+    except BlockingIOError:
+        print("⚠️ Another bot instance is already running. Exiting.")
+        return
+
 
     application = (
         Application.builder()
