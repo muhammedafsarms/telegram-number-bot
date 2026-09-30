@@ -589,7 +589,7 @@ async def keyboard_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             )
 
         await update.message.reply_text(
-            "▶️ Sequence started!\\n\\n"
+            "▶️ Sequence started!\n\n"
             f"➡️ Next number: {state['position'] * state['multiplier']}",
             reply_markup=main_keyboard()
         )
@@ -650,13 +650,13 @@ async def keyboard_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
 
         await update.message.reply_text(
-            "📊 NUMBER LOOP BOT\\n\\n"
-            f"{status_text}\\n\\n"
-            f"🔢 Current: {current}\\n"
-            f"✖️ Multiplier: ×{multiplier}\\n"
-            f"📦 Block: {position}/100\\n"
-            f"📈 Progress: {position}%\\n"
-            f"⏳ Remaining: {remaining}\\n"
+            "📊 NUMBER LOOP BOT\n\n"
+            f"{status_text}\n\n"
+            f"🔢 Current: {current}\n"
+            f"✖️ Multiplier: ×{multiplier}\n"
+            f"📦 Block: {position}/100\n"
+            f"📈 Progress: {position}%\n"
+            f"⏳ Remaining: {remaining}\n"
             f"➡️ Next: {current}",
             reply_markup=main_keyboard()
         )
@@ -665,8 +665,8 @@ async def keyboard_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         awaiting_set_position.add(chat_id)
 
         await update.message.reply_text(
-            "🎯 Enter the position you want to set.\\n\\n"
-            "Choose a number from 1 to 100.\\n\\n"
+            "🎯 Enter the position you want to set.\n\n"
+            "Choose a number from 1 to 100.\n\n"
             "Example: 50"
         )
 
@@ -694,21 +694,21 @@ async def keyboard_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         save_state()
 
         await update.message.reply_text(
-            "🎯 Position updated!\\n\\n"
-            f"📍 Position: {position}/100\\n"
-            f"✖️ Multiplier: ×{state['multiplier']}\\n"
+            "🎯 Position updated!\n\n"
+            f"📍 Position: {position}/100\n"
+            f"✖️ Multiplier: ×{state['multiplier']}\n"
             f"➡️ Next number: {position * state['multiplier']}",
             reply_markup=main_keyboard()
         )
 
     elif text == "⚙️ Settings":
         await update.message.reply_text(
-            "⚙️ BOT SETTINGS\\n\\n"
-            f"✖️ Multiplier: ×{state['multiplier']}\\n"
-            "📦 Block size: 100\\n"
-            "⏱️ Interval: 2 seconds\\n"
-            f"📍 Position: {state['position']}/100\\n"
-            f"📈 Progress: {state['position']}%\\n"
+            "⚙️ BOT SETTINGS\n\n"
+            f"✖️ Multiplier: ×{state['multiplier']}\n"
+            "📦 Block size: 100\n"
+            "⏱️ Interval: 2 seconds\n"
+            f"📍 Position: {state['position']}/100\n"
+            f"📈 Progress: {state['position']}%\n"
             f"🏆 Completed blocks: {len(state.get('history', []))}",
             reply_markup=main_keyboard()
         )
@@ -717,14 +717,14 @@ async def keyboard_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         completed = state.get("history", [])
 
         if not completed:
-            message = "🏆 BLOCK HISTORY\\n\\nNo blocks completed yet."
+            message = "🏆 BLOCK HISTORY\n\nNo blocks completed yet."
         else:
             lines = ["🏆 BLOCK HISTORY", ""]
             for item in completed[-10:]:
                 lines.append(
                     f"×{item['multiplier']} → {item['value']} ✅"
                 )
-            message = "\\n".join(lines)
+            message = "\n".join(lines)
 
         await update.message.reply_text(
             message,
@@ -750,7 +750,7 @@ async def keyboard_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         save_state()
 
         await update.message.reply_text(
-            "🔄 Reset complete!\\n\\n"
+            "🔄 Reset complete!\n\n"
             "Next sequence starts from 1.",
             reply_markup=main_keyboard()
         )
