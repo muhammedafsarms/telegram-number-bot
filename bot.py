@@ -43,6 +43,13 @@ def load_state():
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     global sequence_task
 
+    if sequence_task is not None and not sequence_task.done():
+        await update.message.reply_text(
+            "⚠️ Sequence is already running!\n\n"
+            "Use /stop first if you want to restart it."
+        )
+        return
+
     state["chat_id"] = update.effective_chat.id
     state["running"] = True
     save_state()
@@ -52,11 +59,9 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "Sending one number every second."
     )
 
-    if sequence_task is None or sequence_task.done():
-        sequence_task = asyncio.create_task(
-            number_loop(context.application)
-        )
-
+    sequence_task = asyncio.create_task(
+        number_loop(context.application)
+    )
 
 async def stop(update: Update, context: ContextTypes.DEFAULT_TYPE):
     state["running"] = False
