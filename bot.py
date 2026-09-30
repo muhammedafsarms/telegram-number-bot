@@ -71,20 +71,20 @@ async def status(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     current = position * multiplier
     block_end = 100 * multiplier
-    next_number = (position + 1) * multiplier
+    remaining = 100 - position
 
     status_text = "🟢 Running" if state["running"] else "🔴 Stopped"
 
     await update.message.reply_text(
         "📊 NUMBER BOT\n\n"
-        f"{status_text}\n"
+        f"{status_text}\n\n"
         f"🔢 Current: {current}\n"
         f"✖️ Multiplier: ×{multiplier}\n"
         f"📦 Block: {position}/100\n"
         f"🎯 Block end: {block_end}\n"
-        f"➡️ Next: {next_number}\n\n"
+        f"⏳ Remaining: {remaining}\n"
+        f"➡️ Next: {(position + 1) * multiplier}"
     )
-
 
 async def reset(update: Update, context: ContextTypes.DEFAULT_TYPE):
     state["chat_id"] = update.effective_chat.id
