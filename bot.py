@@ -4,11 +4,12 @@ import os
 import fcntl
 from pathlib import Path
 
-from telegram import Update
+from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.error import RetryAfter
 from telegram.ext import (
     Application,
     CommandHandler,
+    CallbackQueryHandler,
     ContextTypes,
 )
 
@@ -57,6 +58,30 @@ def load_state():
             print("📂 No saved state found. Starting fresh.")
 
 
+def control_keyboard():
+    return InlineKeyboardMarkup([
+        [
+            InlineKeyboardButton("▶️ Start", callback_data="start"),
+            InlineKeyboardButton("⏸️ Pause", callback_data="pause"),
+        ],
+        [
+            InlineKeyboardButton("▶️ Resume", callback_data="resume"),
+            InlineKeyboardButton("⏹️ Stop", callback_data="stop"),
+        ],
+        [
+            InlineKeyboardButton("📊 Status", callback_data="status"),
+            InlineKeyboardButton("🎯 Set Position", callback_data="set"),
+        ],
+        [
+            InlineKeyboardButton("⚙️ Settings", callback_data="settings"),
+            InlineKeyboardButton("🏆 History", callback_data="history"),
+        ],
+        [
+            InlineKeyboardButton("🔄 Reset", callback_data="reset"),
+        ],
+    ])
+
+
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     global sequence_task
 
@@ -75,7 +100,8 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     await update.message.reply_text(
         "▶️ Sequence started!\n\n"
-        "Sending one number every 2 seconds."
+        "Sending one number every 2 seconds.",
+        reply_markup=control_keyboard()
     )
 
     sequence_task = asyncio.create_task(
@@ -213,7 +239,8 @@ async def status(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"🎯 Block end: {block_end}\n"
         f"⏳ Remaining: {remaining}\n"
         f"➡️ Next: {current}\n\n"
-        "⏱️ Speed: 1 number / 2 seconds"
+        "⏱️ Speed: 1 number / 2 seconds",
+        reply_markup=control_keyboard()
     )
 
 
@@ -342,6 +369,171 @@ async def number_loop(application):
             print("Sending error:", error)
             await asyncio.sleep(5)
 
+async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    global sequence_task
+
+    query = update.callback_query
+    await query.answer()
+
+    action = query.data
+
+    if action == "start":
+        state["chat_id"] = query.message.chat_id
+        state["running"] = True
+        state["paused"] = False
+        save_state()
+
+        if sequence_task is None or sequence_task.done():
+            sequence_task = asyncio.create_task(
+                number_loop(context.application)
+            )
+
+        await query.edit_message_text(
+            "▶️ Sequence started!\n\n"
+            f"➡️ Next number: {state['position'] * state['multiplier']}",
+            reply_markup=control_keyboard()
+        )
+
+    elif action == "pause":
+        if not state["running"]:
+            await query.edit_message_text(
+                "⏸️ Sequence is stopped.",
+                reply_markup=control_keyboard()
+            )
+            return
+
+        state["paused"] = True
+        save_state()
+
+        await query.edit_message_text(
+            "⏸️ Sequence paused!\n\n"
+            f"📍 Position: {state['position']}/100\n"
+            f"✖️ Multiplier: ×{state['multiplier']}\n\n"
+            "Press ▶️ Resume to continue.",
+            reply_markup=control_keyboard()
+        )
+
+    elif action == "resume":
+        state["chat_id"] = query.message.chat_id
+        state["running"] = True
+        state["paused"] = False
+        save_state()
+
+        if sequence_task is None or sequence_task.done():
+            sequence_task = asyncio.create_task(
+                number_loop(context.application)
+            )
+
+        await query.edit_message_text(
+            "▶️ Sequence resumed!\n\n"
+            f"➡️ Next number: {state['position'] * state['multiplier']}",
+            reply_markup=control_keyboard()
+        )
+
+    elif action == "stop":
+        state["running"] = False
+        state["paused"] = False
+        save_state()
+
+        if sequence_task is not None and not sequence_task.done():
+            sequence_task.cancel()
+            try:
+                await sequence_task
+            except asyncio.CancelledError:
+                pass
+
+        sequence_task = None
+
+        await query.edit_message_text(
+            "⏹️ Sequence stopped.",
+            reply_markup=control_keyboard()
+        )
+
+    elif action == "status":
+        position = state["position"]
+        multiplier = state["multiplier"]
+        current = position * multiplier
+        remaining = 100 - position
+
+        status_text = (
+            "⏸️ Paused" if state.get("paused", False)
+            else "🟢 Running" if state["running"]
+            else "🔴 Stopped"
+        )
+
+        await query.edit_message_text(
+            "📊 NUMBER LOOP BOT\n\n"
+            f"{status_text}\n\n"
+            f"🔢 Current: {current}\n"
+            f"✖️ Multiplier: ×{multiplier}\n"
+            f"📦 Block: {position}/100\n"
+            f"📈 Progress: {position}%\n"
+            f"⏳ Remaining: {remaining}\n"
+            f"➡️ Next: {current}",
+            reply_markup=control_keyboard()
+        )
+
+    elif action == "set":
+        await query.answer(
+            "Use /set 50 (replace 50 with your position)",
+            show_alert=True
+        )
+
+    elif action == "settings":
+        await query.edit_message_text(
+            "⚙️ BOT SETTINGS\n\n"
+            f"✖️ Multiplier: ×{state['multiplier']}\n"
+            "📦 Block size: 100\n"
+            "⏱️ Interval: 2 seconds\n"
+            f"📍 Position: {state['position']}/100\n"
+            f"📈 Progress: {state['position']}%\n"
+            f"🏆 Completed blocks: {len(state.get('history', []))}",
+            reply_markup=control_keyboard()
+        )
+
+    elif action == "history":
+        completed = state.get("history", [])
+
+        if not completed:
+            message = "🏆 BLOCK HISTORY\n\nNo blocks completed yet."
+        else:
+            lines = ["🏆 BLOCK HISTORY", ""]
+            for item in completed[-10:]:
+                lines.append(
+                    f"×{item['multiplier']} → {item['value']} ✅"
+                )
+            message = "\n".join(lines)
+
+        await query.edit_message_text(
+            message,
+            reply_markup=control_keyboard()
+        )
+
+    elif action == "reset":
+        if sequence_task is not None and not sequence_task.done():
+            sequence_task.cancel()
+            try:
+                await sequence_task
+            except asyncio.CancelledError:
+                pass
+
+        sequence_task = None
+
+        state["chat_id"] = query.message.chat_id
+        state["position"] = 1
+        state["multiplier"] = 1
+        state["running"] = False
+        state["paused"] = False
+        state["history"] = []
+        save_state()
+
+        await query.edit_message_text(
+            "🔄 Reset complete!\n\n"
+            "Next sequence starts from 1.",
+            reply_markup=control_keyboard()
+        )
+
+
 async def post_init(application):
     global sequence_task
 
@@ -409,6 +601,10 @@ def main():
 
     application.add_handler(
         CommandHandler("help", help_command)
+    )
+
+    application.add_handler(
+        CallbackQueryHandler(button_callback)
     )
 
     application.run_polling()
