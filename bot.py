@@ -69,7 +69,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     save_state()
 
     await update.message.reply_text(
-        "▶️ Sequence started!\\n\\n"
+        "▶️ Sequence started!\n\n"
         "Sending one number every 2 seconds."
     )
 
@@ -79,11 +79,11 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
-        "📊 NUMBER LOOP BOT\\n\\n"
-        "▶️ /start - Start sequence\\n"
-        "⏹️ /stop - Stop sequence\\n"
-        "📊 /status - View progress\\n"
-        "🔄 /reset - Reset to ×1\\n"
+        "📊 NUMBER LOOP BOT\n\n"
+        "▶️ /start - Start sequence\n"
+        "⏹️ /stop - Stop sequence\n"
+        "📊 /status - View progress\n"
+        "🔄 /reset - Reset to ×1\n"
         "❓ /help - Show commands"
     )
 
@@ -143,7 +143,7 @@ async def reset(update: Update, context: ContextTypes.DEFAULT_TYPE):
     save_state()
 
     await update.message.reply_text(
-        "🔄 Reset complete!\\n\\n"
+        "🔄 Reset complete!\n\n"
         "Next sequence starts from 1."
     )
 
@@ -174,9 +174,9 @@ async def number_loop(application):
                 await application.bot.send_message(
                     chat_id=state["chat_id"],
                     text=(
-                        "🎉 BLOCK COMPLETED!\\n\\n"
-                        f"✖ Multiplier: ×{completed_multiplier}\\n"
-                        f"🎯 Reached: {completed_value}\\n\\n"
+                        "🎉 BLOCK COMPLETED!\n\n"
+                        f"✖ Multiplier: ×{completed_multiplier}\n"
+                        f"🎯 Reached: {completed_value}\n\n"
                         f"🚀 Next block: ×{next_multiplier}"
                     )
                 )
