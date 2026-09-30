@@ -43,23 +43,21 @@ def load_state():
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     global sequence_task
 
-    if state["running"]:
-        await update.message.reply_text(
-            "⚠️ Sequence is already running!"
-        )
-        return
-
-    if state["running"] and (sequence_task is None or sequence_task.done()):
-        state["running"] = False
-        save_state()
+    # Cancel any existing sequence before starting a new one
+    if sequence_task is not None and not sequence_task.done():
+        sequence_task.cancel()
+        try:
+            await sequence_task
+        except asyncio.CancelledError:
+            pass
 
     state["chat_id"] = update.effective_chat.id
     state["running"] = True
     save_state()
 
     await update.message.reply_text(
-        "▶️ Sequence started!\n\n"
-        "Sending one number every 1.2 seconds."
+        "▶️ Sequence started!\\n\\n"
+        "Sending one number every 2 seconds."
     )
 
     sequence_task = asyncio.create_task(
@@ -178,16 +176,12 @@ async def number_loop(application):
             await asyncio.sleep(5)
 
 async def post_init(application):
-    global sequence_task
-
     load_state()
 
-    # Automatically resume if the bot was running before restart
-    if state["running"] and state["chat_id"]:
-        sequence_task = asyncio.create_task(
-            number_loop(application)
-        )
-
+    # Do not automatically start the sequence.
+    # The user must explicitly use /start.
+    state["running"] = False
+    save_state()
 
 def main():
 
