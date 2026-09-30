@@ -187,12 +187,16 @@ async def number_loop(application):
             await asyncio.sleep(5)
 
 async def post_init(application):
+    global sequence_task
+
     load_state()
 
-    # Do not automatically start the sequence.
-    # The user must explicitly use /start.
-    state["running"] = False
-    save_state()
+    # Automatically resume the sequence after a restart
+    if state["running"] and state["chat_id"]:
+        print("🔄 Auto-resuming number sequence...")
+        sequence_task = asyncio.create_task(
+            number_loop(application)
+        )
 
 def main():
 
