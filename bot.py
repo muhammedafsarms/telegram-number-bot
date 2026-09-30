@@ -42,7 +42,7 @@ def load_state():
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     global sequence_task
 
-    if state["running"] and sequence_task is not None and not sequence_task.done():
+    if state["running"]:
         await update.message.reply_text(
             "⚠️ Sequence is already running!"
         )
@@ -77,8 +77,14 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 async def stop(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    global sequence_task
+
     state["running"] = False
     save_state()
+
+    if sequence_task is not None and not sequence_task.done():
+        sequence_task.cancel()
+        sequence_task = None
 
     await update.message.reply_text("⏸️ Sequence stopped.")
 
