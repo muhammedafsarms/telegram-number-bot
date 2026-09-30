@@ -318,8 +318,8 @@ async def number_loop(application):
                         "🎉 BLOCK COMPLETED!\n\n"
                         f"✖ Multiplier: ×{completed_multiplier}\n"
                         f"🎯 Reached: {completed_value}\n\n"
-                        "📈 Progress: 100%\\n\\n"
-                        f"🚀 Next block: ×{next_multiplier}\\n"
+                        "📈 Progress: 100%\n\n"
+                        f"🚀 Next block: ×{next_multiplier}\n"
                         f"➡️ Next number: {next_multiplier}"
                     )
                 )
