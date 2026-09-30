@@ -36,8 +36,7 @@ def load_state():
         except Exception:
             pass
 
-    # Don't automatically start after a restart
-    state["running"] = False
+    # Preserve the saved running state for automatic resume
 
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -168,7 +167,15 @@ async def number_loop(application):
 
 
 async def post_init(application):
+    global sequence_task
+
     load_state()
+
+    # Automatically resume if the bot was running before restart
+    if state["running"] and state["chat_id"]:
+        sequence_task = asyncio.create_task(
+            number_loop(application)
+        )
 
 
 def main():
