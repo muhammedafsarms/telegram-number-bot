@@ -4,6 +4,7 @@ import os
 from pathlib import Path
 
 from telegram import Update
+from telegram.error import RetryAfter
 from telegram.ext import (
     Application,
     CommandHandler,
@@ -126,7 +127,6 @@ async def reset(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def number_loop(application):
     while True:
-
         if not state["running"] or not state["chat_id"]:
             await asyncio.sleep(1)
             continue
@@ -152,25 +152,30 @@ async def number_loop(application):
                 await application.bot.send_message(
                     chat_id=state["chat_id"],
                     text=(
-                        "🎉 BLOCK COMPLETED!\n\n"
-                        f"✖️ Multiplier: ×{completed_multiplier}\n"
-                        f"🎯 Reached: {completed_value}\n\n"
+                        "🎉 BLOCK COMPLETED!\\n\\n"
+                        f"✖ Multiplier: ×{completed_multiplier}\\n"
+                        f"🎯 Reached: {completed_value}\\n\\n"
                         f"🚀 Next block: ×{next_multiplier}"
                     )
                 )
 
                 state["position"] = 1
                 state["multiplier"] += 1
+                save_state()
 
-            save_state()
+            await asyncio.sleep(2.0)
 
-            # ~1 message per second
-            await asyncio.sleep(1.2)
+        except RetryAfter as error:
+            print(f"⚠️ Telegram flood control. Waiting {error.retry_after + 1} seconds...")
+            await asyncio.sleep(error.retry_after + 1)
+
+        except asyncio.CancelledError:
+            print("⏹️ Number loop cancelled")
+            raise
 
         except Exception as error:
             print("Sending error:", error)
             await asyncio.sleep(5)
-
 
 async def post_init(application):
     global sequence_task
