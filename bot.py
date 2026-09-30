@@ -110,6 +110,18 @@ async def status(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
 
 async def reset(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    global sequence_task
+
+    # Cancel the existing sequence task
+    if sequence_task is not None and not sequence_task.done():
+        sequence_task.cancel()
+        try:
+            await sequence_task
+        except asyncio.CancelledError:
+            pass
+
+    sequence_task = None
+
     state["chat_id"] = update.effective_chat.id
     state["position"] = 1
     state["multiplier"] = 1
@@ -118,10 +130,9 @@ async def reset(update: Update, context: ContextTypes.DEFAULT_TYPE):
     save_state()
 
     await update.message.reply_text(
-        "🔄 Reset complete!\n\n"
+        "🔄 Reset complete!\\n\\n"
         "Next sequence starts from 1."
     )
-
 
 async def number_loop(application):
     while True:
